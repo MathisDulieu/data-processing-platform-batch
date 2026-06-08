@@ -1,0 +1,5 @@
+batch:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dataprocessing
+    username: devuser
+    password: devpassword

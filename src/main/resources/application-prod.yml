@@ -1,0 +1,5 @@
+batch:
+  datasource:
+    url: ${BATCH_DATASOURCE_URL}
+    username: ${BATCH_DATASOURCE_USERNAME}
+    password: ${BATCH_DATASOURCE_PASSWORD}
