@@ -12,7 +12,7 @@ public class BatchConfigurationTests {
 
     @Bean
     @ServiceConnection
-    public PostgreSQLContainer<?> postgresContainer() {
+    public static PostgreSQLContainer<?> postgresContainer() {
         return new PostgreSQLContainer<>("postgres:16-alpine");
     }
 

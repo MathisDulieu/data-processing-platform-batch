@@ -10,30 +10,31 @@ import java.util.Optional;
 public class RequiredFieldsValidationRule implements ValidationRule {
 
     @Override
-    public Optional<ValidationError> validate(Transaction transaction) {
-        if (isMissing(transaction.reference())) {
+    public Optional<ValidationError> validate(final Transaction transaction) {
+        if (this.isMissing(transaction.reference())) {
             return error("reference", "reference is required");
         }
-        if (isMissing(transaction.label())) {
+        if (this.isMissing(transaction.label())) {
             return error("label", "label is required");
         }
         if (transaction.amount() == null) {
             return error("amount", "amount is required");
         }
-        if (isMissing(transaction.currency())) {
+        if (this.isMissing(transaction.currency())) {
             return error("currency", "currency is required");
         }
         if (transaction.date() == null) {
             return error("date", "date is required");
         }
+
         return Optional.empty();
     }
 
-    private boolean isMissing(String value) {
+    private boolean isMissing(final String value) {
         return value == null || value.isBlank();
     }
 
-    private Optional<ValidationError> error(String field, String message) {
+    private Optional<ValidationError> error(final String field, final String message) {
         return Optional.of(new ValidationError(field, message));
     }
 }

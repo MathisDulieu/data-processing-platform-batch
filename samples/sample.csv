@@ -1,0 +1,3 @@
+reference,label,amount,currency,date,category
+REF001,Amazon purchase,49.99,EUR,2025-01-15,SHOPPING
+REF002,January salary,3000.00,EUR,2025-01-31,INCOME

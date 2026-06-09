@@ -9,6 +9,8 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -28,8 +30,8 @@ public class ImportLogRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public Long save(Long uploadedFileId, LocalDateTime startedAt) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
+    public Long save(final Long uploadedFileId, final LocalDateTime startedAt) {
+        final KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement preparedStatement = connection.prepareStatement(INSERT_LOG, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setLong(1, uploadedFileId);
@@ -37,11 +39,12 @@ public class ImportLogRepository {
             preparedStatement.setTimestamp(3, Timestamp.valueOf(startedAt));
             return preparedStatement;
         }, keyHolder);
+
         return (Long) requireNonNull(keyHolder.getKeys()).get("id");
     }
 
-    public void update(ImportLog importLog) {
-        Timestamp finishedAt = Optional.ofNullable(importLog.finishedAt())
+    public void update(final ImportLog importLog) {
+        final Timestamp finishedAt = Optional.ofNullable(importLog.finishedAt())
             .map(Timestamp::valueOf)
             .orElse(null);
 
@@ -56,29 +59,35 @@ public class ImportLogRepository {
         );
     }
 
-    public void saveRejectedTransactions(Long logId, List<RejectedTransaction> rejectedTransactions) {
-        List<Object[]> batchArgs = rejectedTransactions.stream()
+    public void saveRejectedTransactions(final Long logId, final List<RejectedTransaction> rejectedTransactions) {
+        final List<Object[]> batchArgs = rejectedTransactions.stream()
             .map(rejected -> new Object[]{logId, rejected.reference(), rejected.field(), rejected.reason()})
             .toList();
+
         jdbcTemplate.batchUpdate(INSERT_REJECTED, batchArgs);
     }
 
     public Optional<ImportLog> findLatest() {
-        List<ImportLog> results = jdbcTemplate.query(SELECT_LATEST_LOG, (rs, rowNum) -> ImportLog.builder()
-                .id(rs.getLong("id"))
-                .uploadedFileId(rs.getLong("uploaded_file_id"))
-                .status(rs.getString("status"))
-                .totalRecords(rs.getObject("total_records", Integer.class))
-                .validRecords(rs.getObject("valid_records", Integer.class))
-                .rejectedRecords(rs.getObject("rejected_records", Integer.class))
-                .errorMessage(rs.getString("error_message"))
-                .startedAt(rs.getTimestamp("started_at").toLocalDateTime())
-                .finishedAt(Optional.ofNullable(rs.getTimestamp("finished_at"))
-                    .map(Timestamp::toLocalDateTime)
-                    .orElse(null)
-                )
-                .build()
+        return jdbcTemplate.query(SELECT_LATEST_LOG, rs ->
+            rs.next() ? Optional.of(mapImportLog(rs)) : Optional.empty()
         );
-        return results.stream().findFirst();
+    }
+
+    private ImportLog mapImportLog(final ResultSet rs) throws SQLException {
+        return ImportLog.builder()
+            .id(rs.getLong("id"))
+            .uploadedFileId(rs.getLong("uploaded_file_id"))
+            .status(rs.getString("status"))
+            .totalRecords(rs.getObject("total_records", Integer.class))
+            .validRecords(rs.getObject("valid_records", Integer.class))
+            .rejectedRecords(rs.getObject("rejected_records", Integer.class))
+            .errorMessage(rs.getString("error_message"))
+            .startedAt(this.toLocalDateTime(rs.getTimestamp("started_at")))
+            .finishedAt(this.toLocalDateTime(rs.getTimestamp("finished_at")))
+            .build();
+    }
+
+    private LocalDateTime toLocalDateTime(final Timestamp timestamp) {
+        return timestamp != null ? timestamp.toLocalDateTime() : null;
     }
 }

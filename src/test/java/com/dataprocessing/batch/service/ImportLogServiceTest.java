@@ -6,6 +6,7 @@ import com.dataprocessing.batch.repository.ImportLogRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,11 +15,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,94 +34,129 @@ class ImportLogServiceTest {
     private ImportLogService importLogService;
 
     @Test
-    void shouldReturnLogId_whenStartIsCalled() {
-        //Arrange
-        when(importLogRepository.save(eq(1L), any(LocalDateTime.class))).thenReturn(42L);
+    void shouldReturnLogId() {
+        // Arrange
+        when(importLogRepository.save(any(), any())).thenReturn(42L);
 
-        //Act
+        // Act
         Long logId = importLogService.start(1L);
 
-        //Assert
+        // Assert
+        verify(importLogRepository).save(eq(1L), any(LocalDateTime.class));
+        verifyNoMoreInteractions(importLogRepository);
+
         assertThat(logId).isEqualTo(42L);
     }
 
     @Test
-    void shouldUpdateLogWithSuccess_whenSuccessIsCalled() {
-        //Arrange
+    void shouldUpdateLogWithSuccess() {
+        // Arrange
         ArgumentCaptor<ImportLog> captor = ArgumentCaptor.forClass(ImportLog.class);
 
-        //Act
-        importLogService.success(1L, 2L, 10, 8, 2, List.of());
+        // Act
+        importLogService.success(1L, 2L, 10, 8, 2, emptyList());
 
-        //Assert
+        // Assert
         verify(importLogRepository).update(captor.capture());
-        ImportLog saved = captor.getValue();
-        assertThat(saved.status()).isEqualTo("SUCCESS");
-        assertThat(saved.totalRecords()).isEqualTo(10);
-        assertThat(saved.validRecords()).isEqualTo(8);
-        assertThat(saved.rejectedRecords()).isEqualTo(2);
-        assertThat(saved.finishedAt()).isNotNull();
+        verifyNoMoreInteractions(importLogRepository);
+
+        ImportLog savedImportLog = captor.getValue();
+
+        assertThat(savedImportLog.id()).isEqualTo(1L);
+        assertThat(savedImportLog.uploadedFileId()).isEqualTo(2L);
+        assertThat(savedImportLog.status()).isEqualTo("SUCCESS");
+        assertThat(savedImportLog.totalRecords()).isEqualTo(10);
+        assertThat(savedImportLog.validRecords()).isEqualTo(8);
+        assertThat(savedImportLog.rejectedRecords()).isEqualTo(2);
+        assertThat(savedImportLog.finishedAt()).isNotNull();
     }
 
     @Test
     void shouldSaveRejectedTransactions_whenSuccessHasRejections() {
-        //Arrange
-        List<RejectedTransaction> rejected = List.of(new RejectedTransaction("REF001", "amount", "amount is required"));
+        // Arrange
+        ArgumentCaptor<ImportLog> captor = ArgumentCaptor.forClass(ImportLog.class);
+        List<RejectedTransaction> rejectedTransactions = List.of(
+            new RejectedTransaction("REF001", "amount", "amount is required")
+        );
 
-        //Act
-        importLogService.success(1L, 2L, 5, 4, 1, rejected);
+        // Act
+        importLogService.success(1L, 2L, 5, 4, 1, rejectedTransactions);
 
-        //Assert
-        verify(importLogRepository).saveRejectedTransactions(1L, rejected);
+        // Assert
+        InOrder inOrder = inOrder(importLogRepository);
+        inOrder.verify(importLogRepository).update(captor.capture());
+        inOrder.verify(importLogRepository).saveRejectedTransactions(1L, rejectedTransactions);
+        inOrder.verifyNoMoreInteractions();
+
+        ImportLog savedImportLog = captor.getValue();
+
+        assertThat(savedImportLog.id()).isEqualTo(1L);
+        assertThat(savedImportLog.uploadedFileId()).isEqualTo(2L);
+        assertThat(savedImportLog.status()).isEqualTo("SUCCESS");
+        assertThat(savedImportLog.totalRecords()).isEqualTo(5);
+        assertThat(savedImportLog.validRecords()).isEqualTo(4);
+        assertThat(savedImportLog.rejectedRecords()).isEqualTo(1);
+        assertThat(savedImportLog.finishedAt()).isNotNull();
     }
 
     @Test
-    void shouldNotSaveRejectedTransactions_whenSuccessHasNoRejections() {
-        //Act
-        importLogService.success(1L, 2L, 5, 5, 0, List.of());
-
-        //Assert
-        verify(importLogRepository, never()).saveRejectedTransactions(any(), any());
-    }
-
-    @Test
-    void shouldUpdateLogWithFailed_whenFailureIsCalled() {
-        //Arrange
+    void shouldUpdateLogWithFailed() {
+        // Arrange
         ArgumentCaptor<ImportLog> captor = ArgumentCaptor.forClass(ImportLog.class);
 
-        //Act
+        // Act
         importLogService.failure(1L, 2L, "Parsing error");
 
-        //Assert
+        // Assert
         verify(importLogRepository).update(captor.capture());
-        ImportLog saved = captor.getValue();
-        assertThat(saved.status()).isEqualTo("FAILED");
-        assertThat(saved.errorMessage()).isEqualTo("Parsing error");
-        assertThat(saved.finishedAt()).isNotNull();
+        verifyNoMoreInteractions(importLogRepository);
+
+        ImportLog savedImportLog = captor.getValue();
+
+        assertThat(savedImportLog.id()).isEqualTo(1L);
+        assertThat(savedImportLog.uploadedFileId()).isEqualTo(2L);
+        assertThat(savedImportLog.status()).isEqualTo("FAILED");
+        assertThat(savedImportLog.totalRecords()).isEqualTo(0);
+        assertThat(savedImportLog.validRecords()).isEqualTo(0);
+        assertThat(savedImportLog.rejectedRecords()).isEqualTo(0);
+        assertThat(savedImportLog.finishedAt()).isNotNull();
     }
 
     @Test
-    void shouldReturnLatestLog_whenOneExists() {
-        //Arrange
-        ImportLog log = new ImportLog(1L, 2L, "SUCCESS", 10, 10, 0, null, LocalDateTime.now(), LocalDateTime.now());
+    void shouldReturnLatestLog() {
+        // Arrange
+        LocalDateTime startedAt = LocalDateTime.of(2025, 8, 15, 17, 45);
+        LocalDateTime finishedAt = LocalDateTime.of(2025, 8, 15, 17, 46);
+
+        ImportLog log = ImportLog.builder()
+            .id(1L)
+            .uploadedFileId(2L)
+            .status("SUCCESS")
+            .totalRecords(10)
+            .validRecords(10)
+            .rejectedRecords(0)
+            .startedAt(startedAt)
+            .finishedAt(finishedAt)
+            .build();
+
         when(importLogRepository.findLatest()).thenReturn(Optional.of(log));
 
-        //Act
+        // Act
         Optional<ImportLog> result = importLogService.findLatest();
 
-        //Assert
-        assertThat(result).contains(log);
+        // Assert
+        assertThat(result).isPresent().get().isEqualTo(log);
     }
 
     @Test
     void shouldReturnEmpty_whenNoLogExists() {
-        //Arrange
+        // Arrange
         when(importLogRepository.findLatest()).thenReturn(Optional.empty());
 
-        //Act
+        // Act
         Optional<ImportLog> result = importLogService.findLatest();
 
-        //Assert
+        // Assert
         assertThat(result).isEmpty();
     }
 }

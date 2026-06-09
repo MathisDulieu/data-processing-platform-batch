@@ -15,20 +15,20 @@ class DatabasePropertiesTest {
 
     @Test
     void shouldNotThrow_whenAllPropertiesAreProvided() {
-        //Arrange
+        // Arrange
         DatabaseProperties properties = new DatabaseProperties("url", "username", "password");
 
-        //Act & Assert
+        // Act & Assert
         assertThatNoException().isThrownBy(properties::afterPropertiesSet);
     }
 
     @ParameterizedTest
     @MethodSource("invalidProperties")
-    void shouldThrow_whenRequiredPropertyIsMissingOrBlank(String url, String username, String password, String expectedMessage) {
-        //Arrange
+    void shouldThrowIllegalArgumentException_whenRequiredPropertyIsMissingOrBlank(String url, String username, String password, String expectedMessage) {
+        // Arrange
         DatabaseProperties properties = new DatabaseProperties(url, username, password);
 
-        //Act & Assert
+        // Act & Assert
         assertThatThrownBy(properties::afterPropertiesSet)
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining(expectedMessage);

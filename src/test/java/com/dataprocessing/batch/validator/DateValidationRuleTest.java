@@ -3,66 +3,75 @@ package com.dataprocessing.batch.validator;
 import com.dataprocessing.batch.model.Transaction;
 import com.dataprocessing.batch.model.ValidationError;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class DateValidationRuleTest {
 
-    private final DateValidationRule rule = new DateValidationRule();
+    private final DateValidationRule dateValidationRule = new DateValidationRule();
 
-    @Test
-    void shouldReturnEmpty_whenDateIsInThePast() {
-        //Arrange
-        Transaction transaction = buildTransaction(LocalDate.of(2020, 6, 15));
-
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
-
-        //Assert
-        assertThat(result).isEmpty();
+    static Stream<LocalDate> validDates() {
+        return Stream.of(
+            LocalDate.of(2020, 6, 15),
+            LocalDate.of(2019, 1, 1),
+            LocalDate.of(2023, 12, 31),
+            LocalDate.now()
+        );
     }
 
-    @Test
-    void shouldReturnEmpty_whenDateIsToday() {
-        //Arrange
-        Transaction transaction = buildTransaction(LocalDate.now());
+    @ParameterizedTest
+    @MethodSource("validDates")
+    void shouldReturnEmpty_whenDateIsValid(LocalDate date) {
+        // Arrange
+        Transaction transaction = buildTransaction(date);
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = dateValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnEmpty_whenDateIsNull() {
-        //Arrange
+        // Arrange
         Transaction transaction = buildTransaction(null);
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = dateValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnError_whenDateIsInTheFuture() {
-        //Arrange
+        // Arrange
         Transaction transaction = buildTransaction(LocalDate.now().plusDays(1));
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = dateValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).contains(new ValidationError("date", "date cannot be in the future"));
     }
 
-    private Transaction buildTransaction(LocalDate date) {
-        return new Transaction("REF001", "Label", BigDecimal.TEN, "EUR", date, "SHOPPING", 1L);
+    private static Transaction buildTransaction(LocalDate date) {
+        return Transaction.builder()
+            .reference("REF001")
+            .label("Label")
+            .amount(BigDecimal.TEN)
+            .currency("EUR")
+            .date(date)
+            .category("SHOPPING")
+            .uploadedFileId(1L)
+            .build();
     }
 }

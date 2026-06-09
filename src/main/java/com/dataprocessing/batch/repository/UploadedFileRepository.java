@@ -26,7 +26,7 @@ public class UploadedFileRepository {
         );
     }
 
-    public void updateStatus(Long fileId, String status) {
+    public void updateStatus(final Long fileId, final String status) {
         jdbcTemplate.update(UPDATE_STATUS, status, fileId);
     }
 }

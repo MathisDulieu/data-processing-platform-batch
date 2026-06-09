@@ -26,33 +26,33 @@ class FileParserFactoryTest {
     @ParameterizedTest
     @ValueSource(strings = {"text/csv", "application/csv"})
     void shouldReturnCsvParser_whenMimeTypeIsCsv(String mimeType) {
-        //Arrange
+        // Arrange
 
-        //Act
+        // Act
         FileParser result = factory.getParser(mimeType);
 
-        //Assert
+        // Assert
         assertThat(result).isSameAs(csvFileParser);
     }
 
     @Test
     void shouldReturnJsonParser_whenMimeTypeIsJson() {
-        //Arrange
+        // Arrange
 
-        //Act
+        // Act
         FileParser result = factory.getParser("application/json");
 
-        //Assert
+        // Assert
         assertThat(result).isSameAs(jsonFileParser);
     }
 
     @Test
     void shouldThrowIllegalArgumentException_whenMimeTypeIsUnsupported() {
-        //Arrange
+        // Arrange
 
-        //Act & Assert
+        // Act & Assert
         assertThatThrownBy(() -> factory.getParser("application/xml"))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unsupported file type: application/xml");
+            .hasMessage("Unsupported file type: application/xml");
     }
 }

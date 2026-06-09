@@ -1,0 +1,4 @@
+[
+    {"reference":"REF001","label":"Amazon purchase","amount":49.99,"currency":"EUR","date":"2025-01-15","category":"SHOPPING"},
+    {"reference":"REF002","label":"January salary","amount":3000.00,"currency":"EUR","date":"2025-01-31","category":"INCOME"}
+]

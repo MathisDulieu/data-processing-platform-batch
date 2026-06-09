@@ -18,19 +18,19 @@ public class JsonFileParser implements FileParser {
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<Transaction> parse(byte[] content, Long uploadedFileId) {
+    public List<Transaction> parse(final byte[] content, final Long uploadedFileId) {
         try {
-            List<Map<String, Object>> rawRecords = objectMapper.readValue(content, new TypeReference<>() {});
+            final List<Map<String, Object>> rawRecords = objectMapper.readValue(content, new TypeReference<>() {});
             return rawRecords.stream()
-                .map(raw -> mapToTransaction(raw, uploadedFileId))
+                .map(raw -> this.mapToTransaction(raw, uploadedFileId))
                 .toList();
         } catch (IOException e) {
             throw new IllegalArgumentException("Failed to parse JSON content", e);
         }
     }
 
-    private Transaction mapToTransaction(Map<String, Object> raw, Long uploadedFileId) {
-        TransactionRaw transactionRaw = objectMapper.convertValue(raw, TransactionRaw.class);
+    private Transaction mapToTransaction(final Map<String, Object> raw, final Long uploadedFileId) {
+        final TransactionRaw transactionRaw = objectMapper.convertValue(raw, TransactionRaw.class);
         return Transaction.builder()
             .reference(transactionRaw.reference())
             .label(transactionRaw.label())

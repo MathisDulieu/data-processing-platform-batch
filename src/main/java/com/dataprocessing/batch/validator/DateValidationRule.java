@@ -11,17 +11,18 @@ import java.util.Optional;
 public class DateValidationRule implements ValidationRule {
 
     @Override
-    public Optional<ValidationError> validate(Transaction transaction) {
+    public Optional<ValidationError> validate(final Transaction transaction) {
         if (transaction.date() == null) {
             return Optional.empty();
         }
-        if (isFutureDate(transaction.date())) {
+        if (this.isFutureDate(transaction.date())) {
             return Optional.of(new ValidationError("date", "date cannot be in the future"));
         }
+
         return Optional.empty();
     }
 
-    private boolean isFutureDate(LocalDate date) {
+    private boolean isFutureDate(final LocalDate date) {
         return date.isAfter(LocalDate.now());
     }
 }

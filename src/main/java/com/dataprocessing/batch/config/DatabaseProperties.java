@@ -11,7 +11,6 @@ public record DatabaseProperties(
     String username,
     String password
 ) implements InitializingBean {
-
     @Override
     public void afterPropertiesSet() {
         hasText(url, "batch.datasource.url must be given");

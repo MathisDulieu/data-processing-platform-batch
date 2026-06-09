@@ -25,12 +25,6 @@ The batch starts on port `8081` and waits for incoming requests.
 
 ## Run tests
 
-Start the test database first:
-
-```bash
-docker compose -f docker-compose.test.yml up -d
-```
-
 Then run the tests:
 
 ```bash
@@ -39,22 +33,53 @@ mvn test
 
 Or use the "Run all tests" shortcut in IntelliJ directly.
 
-## Trigger a batch run
+## Endpoints
 
-```http
-POST http://localhost:8081/batch/run
+### POST /batch/run
+
+Triggers a batch run. Reads all pending files from the database, processes them, and returns the number of processed files.
+
+```json
+{
+  "status": "PROCESSED",
+  "processedFiles": 3
+}
 ```
 
-## Build for production
+### GET /batch/status
 
-```bash
-mvn package -Pprod -DskipTests
+Returns the status of the latest batch run.
+
+```json
+{
+  "status": "PROCESSED",
+  "totalRecords": 10,
+  "validRecords": 8,
+  "rejectedRecords": 2,
+  "startedAt": "2025-01-15T10:30:00",
+  "finishedAt": "2025-01-15T10:30:05",
+  "message": null
+}
 ```
+
+## Sample files
+
+Example files showing the expected format are available in the [`samples`](./samples) folder:
+
+- [`samples/sample.csv`](./samples/sample.csv) — CSV format
+- [`samples/sample.json`](./samples/sample.json) — JSON format
+
+## HTTP requests
+
+Ready-to-use HTTP request files for IntelliJ are available in the [`http`](./http) folder:
+
+- [`http/batch-run.http`](./http/batch-run.http) — Trigger a batch run
+- [`http/batch-status.http`](./http/batch-status.http) — Get the latest batch status
 
 ## Environment variables
 
 | Variable | Description |
 |---|---|
 | `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | Database user |
+| `SPRING_DATASOURCE_USERNAME` | Database username |
 | `SPRING_DATASOURCE_PASSWORD` | Database password |

@@ -20,7 +20,7 @@ public class BatchConfig {
 
     @Bean
     public DataSource dataSource() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        final DriverManagerDataSource dataSource = new DriverManagerDataSource();
         dataSource.setDriverClassName("org.postgresql.Driver");
         dataSource.setUrl(databaseProperties.url());
         dataSource.setUsername(databaseProperties.username());
@@ -29,7 +29,7 @@ public class BatchConfig {
     }
 
     @Bean
-    public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+    public JdbcTemplate jdbcTemplate(final DataSource dataSource) {
         return new JdbcTemplate(dataSource);
     }
 }

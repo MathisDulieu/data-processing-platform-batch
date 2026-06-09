@@ -1,0 +1,7 @@
+POST http://localhost:8081/batch/run
+
+> {%
+    client.test("Status is OK", function() {
+        client.assert(response.status === 200, "Expected 200");
+    });
+%}

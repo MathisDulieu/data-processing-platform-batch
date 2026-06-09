@@ -1,7 +1,5 @@
 package com.dataprocessing.batch.repository;
 
-import com.dataprocessing.batch.BatchApplication;
-import com.dataprocessing.batch.BatchConfigurationTests;
 import com.dataprocessing.batch.model.ImportLog;
 import com.dataprocessing.batch.model.RejectedTransaction;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,16 +9,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = {
-    BatchApplication.class,
-    BatchConfigurationTests.class
-})
+@SpringBootTest
 @ActiveProfiles("test")
 class ImportLogRepositoryTest {
 
@@ -37,34 +34,38 @@ class ImportLogRepositoryTest {
     }
 
     @Test
-    void shouldReturnGeneratedId_whenSaveIsCalled() {
-        //Arrange
+    void shouldSaveImportLog() {
+        // Arrange
+        LocalDateTime startedAt = LocalDateTime.of(2025, 1, 15, 10, 30);
 
-        //Act
-        Long logId = repository.save(1L, LocalDateTime.now());
+        // Act
+        Long logId = repository.save(1L, startedAt);
 
-        //Assert
-        assertThat(logId).isNotNull().isPositive();
+        // Assert
+        ImportLog savedImportLog = jdbcTemplate.queryForObject(
+            "SELECT id, uploaded_file_id, status, total_records, valid_records, rejected_records, error_message, started_at, finished_at FROM import_logs WHERE id = ?",
+            (rs, rowNum) -> getImportLog(rs),
+            logId
+        );
+
+        ImportLog expectedImportLog = ImportLog.builder()
+            .id(logId)
+            .uploadedFileId(1L)
+            .status("RUNNING")
+            .startedAt(startedAt)
+            .build();
+
+        assertThat(savedImportLog).isEqualTo(expectedImportLog);
     }
 
     @Test
-    void shouldPersistRunningStatus_whenSaveIsCalled() {
-        //Arrange
+    void shouldUpdateLog() {
+        // Arrange
+        LocalDateTime startedAt = LocalDateTime.of(2025, 1, 15, 10, 30);
+        LocalDateTime finishedAt = LocalDateTime.of(2025, 1, 15, 10, 31);
 
-        //Act
-        Long logId = repository.save(1L, LocalDateTime.now());
-
-        //Assert
-        String status = jdbcTemplate.queryForObject("SELECT status FROM import_logs WHERE id = ?", String.class, logId);
-        assertThat(status).isEqualTo("RUNNING");
-    }
-
-    @Test
-    void shouldUpdateLog_whenUpdateIsCalled() {
-        //Arrange
-        Long logId = repository.save(1L, LocalDateTime.now());
-        LocalDateTime finishedAt = LocalDateTime.now();
-        ImportLog updated = ImportLog.builder()
+        Long logId = repository.save(1L, startedAt);
+        ImportLog updatedImportLog = ImportLog.builder()
             .id(logId)
             .uploadedFileId(1L)
             .status("SUCCESS")
@@ -74,63 +75,105 @@ class ImportLogRepositoryTest {
             .finishedAt(finishedAt)
             .build();
 
-        //Act
-        repository.update(updated);
+        // Act
+        repository.update(updatedImportLog);
 
-        //Assert
-        ImportLog saved = jdbcTemplate.queryForObject(
+        // Assert
+        ImportLog savedImportLog = jdbcTemplate.queryForObject(
             "SELECT id, uploaded_file_id, status, total_records, valid_records, rejected_records, error_message, started_at, finished_at FROM import_logs WHERE id = ?",
-            (rs, rowNum) -> new ImportLog(
-                rs.getLong("id"), rs.getLong("uploaded_file_id"), rs.getString("status"),
-                rs.getObject("total_records", Integer.class), rs.getObject("valid_records", Integer.class),
-                rs.getObject("rejected_records", Integer.class), rs.getString("error_message"),
-                null, Optional.ofNullable(rs.getTimestamp("finished_at")).map(ts -> ts.toLocalDateTime()).orElse(null)
-            ), logId
+            (rs, rowNum) -> getImportLog(rs),
+            logId
         );
-        assertThat(saved.status()).isEqualTo("SUCCESS");
-        assertThat(saved.totalRecords()).isEqualTo(10);
-        assertThat(saved.validRecords()).isEqualTo(8);
-        assertThat(saved.rejectedRecords()).isEqualTo(2);
-        assertThat(saved.finishedAt()).isNotNull();
+
+        ImportLog expectedImportLog = ImportLog.builder()
+            .id(logId)
+            .uploadedFileId(1L)
+            .status("SUCCESS")
+            .totalRecords(10)
+            .validRecords(8)
+            .rejectedRecords(2)
+            .startedAt(startedAt)
+            .finishedAt(finishedAt)
+            .build();
+
+        assertThat(savedImportLog).isEqualTo(expectedImportLog);
     }
 
     @Test
-    void shouldSaveRejectedTransactions_whenSaveRejectedTransactionsIsCalled() {
-        //Arrange
+    void shouldSaveRejectedTransactions() {
+        // Arrange
         Long logId = repository.save(1L, LocalDateTime.now());
-        List<RejectedTransaction> rejected = List.of(
+        List<RejectedTransaction> rejectedTransactions = List.of(
             new RejectedTransaction("REF001", "amount", "amount is required"),
             new RejectedTransaction("REF002", "date", "date cannot be in the future")
         );
 
-        //Act
-        repository.saveRejectedTransactions(logId, rejected);
+        // Act
+        repository.saveRejectedTransactions(logId, rejectedTransactions);
 
-        //Assert
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rejected_transactions WHERE import_log_id = ?", Integer.class, logId);
-        assertThat(count).isEqualTo(2);
+        // Assert
+        List<RejectedTransaction> savedRejectedTransactions = jdbcTemplate.query(
+            "SELECT reference, field, reason FROM rejected_transactions WHERE import_log_id = ? ORDER BY id",
+            (rs, rowNum) -> getRejectedTransaction(rs),
+            logId
+        );
+
+        assertThat(savedRejectedTransactions).containsExactlyElementsOf(rejectedTransactions);
     }
 
     @Test
-    void shouldReturnLatestLog_whenFindLatestIsCalled() {
-        //Arrange
-        repository.save(1L, LocalDateTime.now().minusMinutes(5));
-        Long latestId = repository.save(1L, LocalDateTime.now());
+    void shouldReturnLatestLog() {
+        // Arrange
+        LocalDateTime firstStartedAt = LocalDateTime.of(2025, 1, 15, 10, 30);
+        LocalDateTime secondStartedAt = LocalDateTime.of(2025, 1, 15, 10, 31);
 
-        //Act
-        Optional<ImportLog> result = repository.findLatest();
+        repository.save(1L, firstStartedAt);
+        Long latestId = repository.save(1L, secondStartedAt);
 
-        //Assert
-        assertThat(result).isPresent();
-        assertThat(result.get().id()).isEqualTo(latestId);
+        // Act
+        Optional<ImportLog> importLogFound = repository.findLatest();
+
+        // Assert
+        ImportLog expectedImportLog = ImportLog.builder()
+            .id(latestId)
+            .uploadedFileId(1L)
+            .status("RUNNING")
+            .startedAt(secondStartedAt)
+            .build();
+
+        assertThat(importLogFound).isPresent().get().isEqualTo(expectedImportLog);
     }
 
     @Test
     void shouldReturnEmpty_whenNoLogsExist() {
-        //Act
+        // Arrange
+
+        // Act
         Optional<ImportLog> result = repository.findLatest();
 
-        //Assert
+        // Assert
         assertThat(result).isEmpty();
+    }
+
+    private static RejectedTransaction getRejectedTransaction(ResultSet rs) throws SQLException {
+        return new RejectedTransaction(
+            rs.getString("reference"),
+            rs.getString("field"),
+            rs.getString("reason")
+        );
+    }
+
+    private static ImportLog getImportLog(ResultSet rs) throws SQLException {
+        return ImportLog.builder()
+            .id(rs.getLong("id"))
+            .uploadedFileId(rs.getLong("uploaded_file_id"))
+            .status(rs.getString("status"))
+            .totalRecords(rs.getObject("total_records", Integer.class))
+            .validRecords(rs.getObject("valid_records", Integer.class))
+            .rejectedRecords(rs.getObject("rejected_records", Integer.class))
+            .errorMessage(rs.getString("error_message"))
+            .startedAt(rs.getTimestamp("started_at").toLocalDateTime())
+            .finishedAt(rs.getTimestamp("finished_at") == null ? null : rs.getTimestamp("finished_at").toLocalDateTime())
+            .build();
     }
 }

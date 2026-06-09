@@ -17,17 +17,29 @@ import java.util.List;
 @Component
 public class CsvFileParser implements FileParser {
 
+    private static final List<String> REQUIRED_HEADERS = List.of("reference", "label", "amount", "currency", "date");
+
     @Override
-    public List<Transaction> parse(byte[] content, Long uploadedFileId) {
-        try (CSVParser csvParser = buildCsvParser(content)) {
-            return parseRecords(csvParser.getRecords(), uploadedFileId);
+    public List<Transaction> parse(final byte[] content, final Long uploadedFileId) {
+        try (final CSVParser csvParser = this.buildCsvParser(content)) {
+            this.validateHeaders(csvParser.getHeaderNames());
+            return this.parseRecords(csvParser.getRecords(), uploadedFileId);
         } catch (IOException | NullPointerException e) {
             throw new IllegalArgumentException("Failed to parse CSV content", e);
         }
     }
 
-    private CSVParser buildCsvParser(byte[] content) throws IOException {
-        InputStreamReader reader = new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8);
+    private void validateHeaders(final List<String> headers) {
+        REQUIRED_HEADERS.stream()
+            .filter(required -> !headers.contains(required))
+            .findFirst()
+            .ifPresent(required -> {
+                throw new IllegalArgumentException("Missing required CSV column: " + required);
+            });
+    }
+
+    private CSVParser buildCsvParser(final byte[] content) throws IOException {
+        final InputStreamReader reader = new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8);
         return CSVFormat.DEFAULT.builder()
                 .setHeader()
                 .setSkipHeaderRecord(true)
@@ -36,26 +48,26 @@ public class CsvFileParser implements FileParser {
                 .parse(reader);
     }
 
-    private List<Transaction> parseRecords(List<CSVRecord> records, Long uploadedFileId) {
+    private List<Transaction> parseRecords(final List<CSVRecord> records, final Long uploadedFileId) {
         return records.stream()
-            .map(record -> mapToTransaction(record, uploadedFileId))
+            .map(record -> this.mapToTransaction(record, uploadedFileId))
             .toList();
     }
 
-    private Transaction mapToTransaction(CSVRecord record, Long uploadedFileId) {
+    private Transaction mapToTransaction(final CSVRecord record, final Long uploadedFileId) {
         return Transaction.builder()
             .reference(record.get("reference"))
             .label(record.get("label"))
-            .amount(parseBigDecimal(record.get("amount")))
+            .amount(this.parseBigDecimal(record.get("amount")))
             .currency(record.get("currency"))
-            .date(parseLocalDate(record.get("date")))
+            .date(this.parseLocalDate(record.get("date")))
             .category(record.get("category"))
             .uploadedFileId(uploadedFileId)
             .build();
     }
 
-    private BigDecimal parseBigDecimal(String value) {
-        if (value == null || value.isBlank()) {
+    private BigDecimal parseBigDecimal(final String value) {
+        if (value.isBlank()) {
             return null;
         }
         try {
@@ -65,8 +77,8 @@ public class CsvFileParser implements FileParser {
         }
     }
 
-    private LocalDate parseLocalDate(String value) {
-        if (value == null || value.isBlank()) {
+    private LocalDate parseLocalDate(final String value) {
+        if (value.isBlank()) {
             return null;
         }
         try {

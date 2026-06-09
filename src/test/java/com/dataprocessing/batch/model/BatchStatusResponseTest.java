@@ -10,15 +10,24 @@ class BatchStatusResponseTest {
 
     @Test
     void shouldBuildResponseFromImportLog_whenLogIsProvided() {
-        //Arrange
+        // Arrange
         LocalDateTime startedAt = LocalDateTime.of(2025, 1, 15, 10, 0);
         LocalDateTime finishedAt = LocalDateTime.of(2025, 1, 15, 10, 5);
-        ImportLog log = new ImportLog(1L, 2L, "SUCCESS", 10, 8, 2, null, startedAt, finishedAt);
+        ImportLog log = ImportLog.builder()
+            .id(1L)
+            .uploadedFileId(2L)
+            .status("SUCCESS")
+            .totalRecords(10)
+            .validRecords(8)
+            .rejectedRecords(2)
+            .startedAt(startedAt)
+            .finishedAt(finishedAt)
+            .build();
 
-        //Act
+        // Act
         BatchStatusResponse response = BatchStatusResponse.from(log);
 
-        //Assert
+        // Assert
         BatchStatusResponse expectedBatchStatusResponse = BatchStatusResponse.builder()
             .status("SUCCESS")
             .totalRecords(10)
@@ -33,12 +42,12 @@ class BatchStatusResponseTest {
 
     @Test
     void shouldBuildNeverRunResponse_whenNoLogExists() {
-        //Arrange
+        // Arrange
 
-        //Act
+        // Act
         BatchStatusResponse batchStatusResponse = BatchStatusResponse.neverRun();
 
-        //Assert
+        // Assert
         BatchStatusResponse expectedBatchStatusResponse = BatchStatusResponse.builder()
             .status("never_run")
             .message("The batch has never been executed")

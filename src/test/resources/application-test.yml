@@ -2,3 +2,11 @@ spring:
   sql:
     init:
       mode: always
+  application:
+    name: data-processing-platform-batch
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: 8081

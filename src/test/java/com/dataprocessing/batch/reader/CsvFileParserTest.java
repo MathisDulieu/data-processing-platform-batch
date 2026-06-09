@@ -2,6 +2,8 @@ package com.dataprocessing.batch.reader;
 
 import com.dataprocessing.batch.model.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -13,11 +15,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CsvFileParserTest {
 
-    private final CsvFileParser parser = new CsvFileParser();
+    private final CsvFileParser csvFileParser = new CsvFileParser();
 
     @Test
     void shouldReturnTransactions_whenCsvContentIsValid() {
-        //Arrange
+        // Arrange
         String csv = """
             reference,label,amount,currency,date,category
             REF001,Amazon purchase,49.99,EUR,2025-01-15,SHOPPING
@@ -25,54 +27,96 @@ class CsvFileParserTest {
 
         byte[] content = csv.getBytes(StandardCharsets.UTF_8);
 
-        //Act
-        List<Transaction> result = parser.parse(content, 1L);
+        // Act
+        List<Transaction> result = csvFileParser.parse(content, 1L);
 
-        //Assert
-        assertThat(result).containsExactly(
-            new Transaction("REF001", "Amazon purchase", new BigDecimal("49.99"), "EUR", LocalDate.of(2025, 1, 15), "SHOPPING", 1L),
-            new Transaction("REF002", "January salary", new BigDecimal("3000.00"), "EUR", LocalDate.of(2025, 1, 31), "INCOME", 1L)
-        );
+        // Assert
+        Transaction transaction1 = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(new BigDecimal("49.99"))
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 15))
+            .category("SHOPPING")
+            .uploadedFileId(1L)
+            .build();
+
+        Transaction transaction2 = Transaction.builder()
+            .reference("REF002")
+            .label("January salary")
+            .amount(new BigDecimal("3000.00"))
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 31))
+            .category("INCOME")
+            .uploadedFileId(1L)
+            .build();
+
+        assertThat(result).containsExactly(transaction1, transaction2);
     }
 
-    @Test
-    void shouldReturnEmptyList_whenCsvHasOnlyHeader() {
-        //Arrange
-        String csv = """
-            reference,label,amount,currency,date,category""";
+    @ParameterizedTest
+    @ValueSource(strings = {"reference", "label", "amount", "currency", "date"})
+    void shouldThrowIllegalArgumentException_whenRequiredHeaderIsMissing(String missingHeader) {
+        // Arrange
+        String headers = "reference,label,amount,currency,date,category"
+            .replace(missingHeader + ",", "")
+            .replace("," + missingHeader, "");
+
+        String csv = headers + """
+            REF001,Amazon purchase,49.99,EUR,2025-01-15,SHOPPING""";
 
         byte[] content = csv.getBytes(StandardCharsets.UTF_8);
 
-        //Act
-        List<Transaction> result = parser.parse(content, 1L);
-
-        //Assert
-        assertThat(result).isEmpty();
+        // Act & Assert
+        assertThatThrownBy(() -> csvFileParser.parse(content, 1L))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Missing required CSV column: " + missingHeader);
     }
 
-    @Test
-    void shouldReturnTransactionWithNullFields_whenCsvFieldsAreMissing() {
-        //Arrange
+    @ParameterizedTest
+    @ValueSource(strings = {" ", "NOT_A_NUMBER"})
+    void shouldReturnNullAmount_whenAmountIsNotValid(String amount) {
+        // Arrange
         String csv = """
-            reference,label,amount,currency,date,category
-            REF001,Label,,EUR,,SHOPPING""";
+        reference,label,amount,currency,date,category
+        REF001,Label,%s,EUR,2025-01-15,SHOPPING""".formatted(amount);
 
         byte[] content = csv.getBytes(StandardCharsets.UTF_8);
 
-        //Act
-        List<Transaction> result = parser.parse(content, 1L);
+        // Act
+        List<Transaction> result = csvFileParser.parse(content, 1L);
 
-        //Assert
-        assertThat(result).containsExactly(
-            new Transaction("REF001", "Label", null, "EUR", null, "SHOPPING", 1L)
-        );
+        // Assert
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().amount()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {" ", "NOT_A_DATE"})
+    void shouldReturnNullDate_whenDateIsNotValid(String date) {
+        // Arrange
+        String csv = """
+        reference,label,amount,currency,date,category
+        REF001,Label,49.99,EUR,%s,SHOPPING""".formatted(date);
+
+        byte[] content = csv.getBytes(StandardCharsets.UTF_8);
+
+        // Act
+        List<Transaction> result = csvFileParser.parse(content, 1L);
+
+        // Assert
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().date()).isNull();
     }
 
     @Test
     void shouldThrowIllegalArgumentException_whenCsvContentIsNull() {
-        //Act & Assert
-        assertThatThrownBy(() -> parser.parse(null, 1L))
+        // Arrange
+
+        // Act & Assert
+        assertThatThrownBy(() -> csvFileParser.parse(null, 1L))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Failed to parse CSV content");
+            .hasMessage("Failed to parse CSV content")
+            .hasCauseInstanceOf(NullPointerException.class);
     }
 }

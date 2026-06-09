@@ -14,24 +14,25 @@ public class AmountValidationRule implements ValidationRule {
     private static final BigDecimal MAX_AMOUNT = new BigDecimal("1000000");
 
     @Override
-    public Optional<ValidationError> validate(Transaction transaction) {
+    public Optional<ValidationError> validate(final Transaction transaction) {
         if (transaction.amount() == null) {
             return Optional.empty();
         }
-        if (isBelowMinimum(transaction.amount())) {
+        if (this.isBelowMinimum(transaction.amount())) {
             return Optional.of(new ValidationError("amount", "amount cannot be less than " + MIN_AMOUNT));
         }
-        if (isAboveMaximum(transaction.amount())) {
+        if (this.isAboveMaximum(transaction.amount())) {
             return Optional.of(new ValidationError("amount", "amount cannot exceed " + MAX_AMOUNT));
         }
+
         return Optional.empty();
     }
 
-    private boolean isBelowMinimum(BigDecimal amount) {
+    private boolean isBelowMinimum(final BigDecimal amount) {
         return amount.compareTo(MIN_AMOUNT) < 0;
     }
 
-    private boolean isAboveMaximum(BigDecimal amount) {
+    private boolean isAboveMaximum(final BigDecimal amount) {
         return amount.compareTo(MAX_AMOUNT) > 0;
     }
 }

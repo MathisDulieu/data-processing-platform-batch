@@ -2,9 +2,6 @@ package com.dataprocessing.batch.transformer;
 
 import com.dataprocessing.batch.model.Transaction;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,31 +10,95 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TransactionTransformerTest {
 
-    private final TransactionTransformer transformer = new TransactionTransformer();
+    private final TransactionTransformer transactionTransformer = new TransactionTransformer();
 
     @Test
-    void shouldNormaliseTransaction_whenAllFieldsArePresent() {
-        //Arrange
-        Transaction transaction = new Transaction("ref001", "  Amazon purchase  ", BigDecimal.TEN, "eur", LocalDate.of(2025, 1, 1), "shopping", 1L);
+    void shouldNormaliseTransaction() {
+        // Arrange
+        Transaction transaction = Transaction.builder()
+            .reference(" ref001 ")
+            .label(" Amazon purchase ")
+            .amount(BigDecimal.TEN)
+            .currency(" eur ")
+            .date(LocalDate.of(2025, 1, 1))
+            .category(" shopping ")
+            .uploadedFileId(1L)
+            .build();
 
-        //Act
-        Transaction result = transformer.transform(transaction);
+        // Act
+        Transaction result = transactionTransformer.transform(transaction);
 
-        //Assert
-        assertThat(result).isEqualTo(new Transaction("REF001", "Amazon purchase", BigDecimal.TEN, "EUR", LocalDate.of(2025, 1, 1), "SHOPPING", 1L));
+        // Assert
+        Transaction expectedTransaction = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(BigDecimal.TEN)
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 1))
+            .category("SHOPPING")
+            .uploadedFileId(1L)
+            .build();
+
+        assertThat(result).isEqualTo(expectedTransaction);
     }
 
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"  "})
-    void shouldSetUncategorized_whenCategoryIsBlankOrNull(String category) {
-        //Arrange
-        Transaction transaction = new Transaction("REF001", "Label", BigDecimal.TEN, "EUR", LocalDate.of(2025, 1, 1), category, 1L);
+    @Test
+    void shouldSetUncategorized_whenCategoryIsBlank() {
+        // Arrange
+        Transaction transaction = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(BigDecimal.TEN)
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 1))
+            .category(" ")
+            .uploadedFileId(1L)
+            .build();
 
-        //Act
-        Transaction result = transformer.transform(transaction);
+        // Act
+        Transaction result = transactionTransformer.transform(transaction);
 
-        //Assert
-        assertThat(result.category()).isEqualTo("UNCATEGORIZED");
+        // Assert
+        Transaction expectedTransaction = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(BigDecimal.TEN)
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 1))
+            .category("UNCATEGORIZED")
+            .uploadedFileId(1L)
+            .build();
+
+        assertThat(result).isEqualTo(expectedTransaction);
+    }
+
+    @Test
+    void shouldSetUncategorized_whenCategoryIsNull() {
+        // Arrange
+        Transaction transaction = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(BigDecimal.TEN)
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 1))
+            .category(null)
+            .uploadedFileId(1L)
+            .build();
+
+        // Act
+        Transaction result = transactionTransformer.transform(transaction);
+
+        // Assert
+        Transaction expectedTransaction = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(BigDecimal.TEN)
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 1))
+            .category("UNCATEGORIZED")
+            .uploadedFileId(1L)
+            .build();
+
+        assertThat(result).isEqualTo(expectedTransaction);
     }
 }

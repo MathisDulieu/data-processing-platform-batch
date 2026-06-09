@@ -15,7 +15,7 @@ public class BatchProcessingService {
     private final FileProcessingService fileProcessingService;
 
     public int run() {
-        List<UploadedFile> processableFiles = uploadedFileRepository.findAllProcessable();
+        final List<UploadedFile> processableFiles = uploadedFileRepository.findAllProcessable();
         processableFiles.forEach(fileProcessingService::process);
         return processableFiles.size();
     }

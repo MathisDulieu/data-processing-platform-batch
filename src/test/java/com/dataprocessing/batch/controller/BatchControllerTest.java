@@ -33,11 +33,11 @@ class BatchControllerTest {
 
     @Test
     void shouldReturnCompletedResponse_whenBatchRunIsTriggered() throws Exception {
-        //Arrange
+        // Arrange
         when(batchProcessingService.run()).thenReturn(3);
 
-        //Act & Assert
-        String expectedJson = """
+        // Act & Assert
+        String expectedJsonResponse = """
             {
               "status": "completed",
               "processedFiles": 3
@@ -47,16 +47,16 @@ class BatchControllerTest {
         mockMvc.perform(post("/batch/run").contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(content().json(expectedJson));
+            .andExpect(content().json(expectedJsonResponse));
     }
 
     @Test
     void shouldReturnNeverRunResponse_whenNoLogExists() throws Exception {
-        //Arrange
+        // Arrange
         when(importLogService.findLatest()).thenReturn(Optional.empty());
 
-        //Act & Assert
-        String expectedJson = """
+        // Act & Assert
+        String expectedJsonResponse = """
             {
               "status": "never_run",
               "message": "The batch has never been executed"
@@ -65,20 +65,27 @@ class BatchControllerTest {
 
         mockMvc.perform(get("/batch/status"))
             .andExpect(status().isOk())
-            .andExpect(content().json(expectedJson));
+            .andExpect(content().json(expectedJsonResponse));
     }
 
     @Test
     void shouldReturnLatestLogStatus_whenLogExists() throws Exception {
-        //Arrange
-        LocalDateTime startedAt = LocalDateTime.of(2025, 1, 15, 10, 0);
-        LocalDateTime finishedAt = LocalDateTime.of(2025, 1, 15, 10, 5);
-        ImportLog log = new ImportLog(1L, 2L, "SUCCESS", 10, 8, 2, null, startedAt, finishedAt);
+        // Arrange
+        ImportLog log = ImportLog.builder()
+            .id(1L)
+            .uploadedFileId(2L)
+            .status("SUCCESS")
+            .totalRecords(10)
+            .validRecords(8)
+            .rejectedRecords(2)
+            .startedAt(LocalDateTime.of(2025, 1, 15, 10, 0))
+            .finishedAt(LocalDateTime.of(2025, 1, 15, 10, 5))
+            .build();
 
         when(importLogService.findLatest()).thenReturn(Optional.of(log));
 
-        //Act & Assert
-        String expectedJson = """
+        // Act & Assert
+        String expectedJsonResponse = """
             {
               "status": "SUCCESS",
               "totalRecords": 10,
@@ -89,6 +96,6 @@ class BatchControllerTest {
 
         mockMvc.perform(get("/batch/status"))
             .andExpect(status().isOk())
-            .andExpect(content().json(expectedJson));
+            .andExpect(content().json(expectedJsonResponse));
     }
 }

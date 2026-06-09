@@ -27,13 +27,13 @@ public class FileProcessingService {
     private final UploadedFileRepository uploadedFileRepository;
     private final ImportLogService importLogService;
 
-    public void process(UploadedFile uploadedFile) {
-        Long logId = importLogService.start(uploadedFile.id());
+    public void process(final UploadedFile uploadedFile) {
+        final Long logId = importLogService.start(uploadedFile.id());
         try {
-            List<Transaction> parsed = parseFile(uploadedFile);
-            List<Transaction> valid = filterValid(parsed);
-            List<RejectedTransaction> rejected = buildRejectedList(parsed);
-            List<Transaction> transformed = transformAll(valid);
+            final List<Transaction> parsed = this.parseFile(uploadedFile);
+            final List<Transaction> valid = this.filterValid(parsed);
+            final List<RejectedTransaction> rejected = this.buildRejectedList(parsed);
+            final List<Transaction> transformed = this.transformAll(valid);
             transactionRepository.saveAll(transformed);
             uploadedFileRepository.updateStatus(uploadedFile.id(), "PROCESSED");
             importLogService.success(logId, uploadedFile.id(), parsed.size(), valid.size(), rejected.size(), rejected);
@@ -43,30 +43,30 @@ public class FileProcessingService {
         }
     }
 
-    private List<Transaction> parseFile(UploadedFile uploadedFile) {
-        FileParser parser = fileParserFactory.getParser(uploadedFile.mimeType());
+    private List<Transaction> parseFile(final UploadedFile uploadedFile) {
+        final FileParser parser = fileParserFactory.getParser(uploadedFile.mimeType());
         return parser.parse(uploadedFile.content(), uploadedFile.id());
     }
 
-    private List<Transaction> filterValid(List<Transaction> transactions) {
+    private List<Transaction> filterValid(final List<Transaction> transactions) {
         return transactions.stream()
             .filter(this::isValid)
             .toList();
     }
 
-    private List<RejectedTransaction> buildRejectedList(List<Transaction> transactions) {
+    private List<RejectedTransaction> buildRejectedList(final List<Transaction> transactions) {
         return transactions.stream()
-            .flatMap(transaction -> findFirstError(transaction)
+            .flatMap(transaction -> this.findFirstError(transaction)
                 .map(error -> new RejectedTransaction(transaction.reference(), error.field(), error.message()))
                 .stream())
             .toList();
     }
 
-    private boolean isValid(Transaction transaction) {
-        return findFirstError(transaction).isEmpty();
+    private boolean isValid(final Transaction transaction) {
+        return this.findFirstError(transaction).isEmpty();
     }
 
-    private Optional<ValidationError> findFirstError(Transaction transaction) {
+    private Optional<ValidationError> findFirstError(final Transaction transaction) {
         return validationRules.stream()
             .map(rule -> rule.validate(transaction))
             .filter(Optional::isPresent)
@@ -74,7 +74,7 @@ public class FileProcessingService {
             .findFirst();
     }
 
-    private List<Transaction> transformAll(List<Transaction> transactions) {
+    private List<Transaction> transformAll(final List<Transaction> transactions) {
         return transactions.stream()
             .map(transactionTransformer::transform)
             .toList();

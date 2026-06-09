@@ -16,12 +16,14 @@ public class ImportLogService {
 
     private final ImportLogRepository importLogRepository;
 
-    public Long start(Long uploadedFileId) {
+    public Long start(final Long uploadedFileId) {
         return importLogRepository.save(uploadedFileId, LocalDateTime.now());
     }
 
-    public void success(Long logId, Long uploadedFileId, int totalRecords, int validRecords, int rejectedRecords, List<RejectedTransaction> rejectedTransactions) {
-        ImportLog importLog = ImportLog.builder()
+    public void success(final Long logId, final Long uploadedFileId, final int totalRecords, final int validRecords,
+                        final int rejectedRecords, final List<RejectedTransaction> rejectedTransactions) {
+
+        final ImportLog importLog = ImportLog.builder()
             .id(logId)
             .uploadedFileId(uploadedFileId)
             .status("SUCCESS")
@@ -32,6 +34,7 @@ public class ImportLogService {
             .startedAt(null)
             .finishedAt(LocalDateTime.now())
             .build();
+
         importLogRepository.update(importLog);
 
         if (!rejectedTransactions.isEmpty()) {
@@ -39,8 +42,8 @@ public class ImportLogService {
         }
     }
 
-    public void failure(Long logId, Long uploadedFileId, String errorMessage) {
-        ImportLog importLog = ImportLog.builder()
+    public void failure(final Long logId, final Long uploadedFileId, final String errorMessage) {
+        final ImportLog importLog = ImportLog.builder()
             .id(logId)
             .uploadedFileId(uploadedFileId)
             .status("FAILED")
@@ -51,6 +54,7 @@ public class ImportLogService {
             .startedAt(null)
             .finishedAt(LocalDateTime.now())
             .build();
+
         importLogRepository.update(importLog);
     }
 

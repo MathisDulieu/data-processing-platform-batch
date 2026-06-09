@@ -21,8 +21,9 @@ public class BatchController {
 
     @PostMapping("/run")
     public ResponseEntity<BatchResponse> run() {
-        int processedFiles = batchProcessingService.run();
-        return ResponseEntity.ok(new BatchResponse("completed", processedFiles));
+        final int processedFiles = batchProcessingService.run();
+        final BatchResponse response = new BatchResponse("completed", processedFiles);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/status")

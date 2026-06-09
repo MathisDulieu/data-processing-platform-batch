@@ -14,58 +14,66 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AmountValidationRuleTest {
 
-    private final AmountValidationRule rule = new AmountValidationRule();
+    private final AmountValidationRule amountValidationRule = new AmountValidationRule();
 
     @ParameterizedTest
     @ValueSource(strings = {"0", "100.00", "1000000", "-1000000", "-150.50"})
     void shouldReturnEmpty_whenAmountIsWithinRange(String amount) {
-        //Arrange
+        // Arrange
         Transaction transaction = buildTransaction(new BigDecimal(amount));
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = amountValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnEmpty_whenAmountIsNull() {
-        //Arrange
+        // Arrange
         Transaction transaction = buildTransaction(null);
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = amountValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).isEmpty();
     }
 
     @Test
     void shouldReturnError_whenAmountExceedsMaximum() {
-        //Arrange
+        // Arrange
         Transaction transaction = buildTransaction(new BigDecimal("1000000.01"));
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = amountValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).contains(new ValidationError("amount", "amount cannot exceed 1000000"));
     }
 
     @Test
     void shouldReturnError_whenAmountIsBelowMinimum() {
-        //Arrange
+        // Arrange
         Transaction transaction = buildTransaction(new BigDecimal("-1000000.01"));
 
-        //Act
-        Optional<ValidationError> result = rule.validate(transaction);
+        // Act
+        Optional<ValidationError> result = amountValidationRule.validate(transaction);
 
-        //Assert
+        // Assert
         assertThat(result).contains(new ValidationError("amount", "amount cannot be less than -1000000"));
     }
 
-    private Transaction buildTransaction(BigDecimal amount) {
-        return new Transaction("REF001", "Label", amount, "EUR", LocalDate.of(2025, 1, 1), "SHOPPING", 1L);
+    private static Transaction buildTransaction(BigDecimal amount) {
+        return Transaction.builder()
+            .reference("REF001")
+            .label("Label")
+            .amount(amount)
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 1))
+            .category("SHOPPING")
+            .uploadedFileId(1L)
+            .build();
     }
 }

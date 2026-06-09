@@ -15,14 +15,15 @@ public class TransactionRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public void saveAll(List<Transaction> transactions) {
-        List<Object[]> batchArgs = transactions.stream()
+    public void saveAll(final List<Transaction> transactions) {
+        final List<Object[]> batchArgs = transactions.stream()
                 .map(this::toArgs)
                 .toList();
+
         jdbcTemplate.batchUpdate(INSERT_TRANSACTION, batchArgs);
     }
 
-    private Object[] toArgs(Transaction transaction) {
+    private Object[] toArgs(final Transaction transaction) {
         return new Object[]{
                 transaction.reference(),
                 transaction.label(),

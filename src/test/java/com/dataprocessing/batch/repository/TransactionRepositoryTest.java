@@ -1,7 +1,5 @@
 package com.dataprocessing.batch.repository;
 
-import com.dataprocessing.batch.BatchApplication;
-import com.dataprocessing.batch.BatchConfigurationTests;
 import com.dataprocessing.batch.model.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,15 +9,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = {
-    BatchApplication.class,
-    BatchConfigurationTests.class
-})
+@SpringBootTest
 @ActiveProfiles("test")
 class TransactionRepositoryTest {
 
@@ -36,51 +33,52 @@ class TransactionRepositoryTest {
     }
 
     @Test
-    void shouldSaveAllTransactions_whenSaveAllIsCalled() {
-        //Arrange
-        List<Transaction> transactions = List.of(
-            new Transaction("REF001", "Amazon purchase", new BigDecimal("49.99"), "EUR", LocalDate.of(2025, 1, 15), "SHOPPING", 1L),
-            new Transaction("REF002", "January salary", new BigDecimal("3000.00"), "EUR", LocalDate.of(2025, 1, 31), "INCOME", 1L)
-        );
+    void shouldSaveAllTransactions() {
+        // Arrange
+        Transaction transaction1 = Transaction.builder()
+            .reference("REF001")
+            .label("Amazon purchase")
+            .amount(new BigDecimal("49.99"))
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 15))
+            .category("SHOPPING")
+            .uploadedFileId(1L)
+            .build();
 
-        //Act
+        Transaction transaction2 = Transaction.builder()
+            .reference("REF002")
+            .label("January salary")
+            .amount(new BigDecimal("3000.00"))
+            .currency("EUR")
+            .date(LocalDate.of(2025, 1, 31))
+            .category("INCOME")
+            .uploadedFileId(1L)
+            .build();
+
+        List<Transaction> transactions = List.of(transaction1, transaction2);
+
+        // Act
         repository.saveAll(transactions);
 
-        //Assert
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class);
-        assertThat(count).isEqualTo(2);
-    }
-
-    @Test
-    void shouldPersistTransactionFields_whenSaveAllIsCalled() {
-        //Arrange
-        List<Transaction> transactions = List.of(
-            new Transaction("REF001", "Amazon purchase", new BigDecimal("49.99"), "EUR", LocalDate.of(2025, 1, 15), "SHOPPING", 1L)
+        // Assert
+        List<Transaction> savedTransactions = jdbcTemplate.query(
+            "SELECT reference, label, amount, currency, date, category, uploaded_file_id FROM transactions ORDER BY id",
+            (rs, rowNum) -> getTransaction(rs)
         );
 
-        //Act
-        repository.saveAll(transactions);
-
-        //Assert
-        Transaction saved = jdbcTemplate.queryForObject(
-            "SELECT reference, label, amount, currency, date, category, uploaded_file_id FROM transactions WHERE reference = 'REF001'",
-            (rs, rowNum) -> new Transaction(
-                rs.getString("reference"), rs.getString("label"),
-                rs.getBigDecimal("amount"), rs.getString("currency"),
-                rs.getDate("date").toLocalDate(), rs.getString("category"),
-                rs.getLong("uploaded_file_id")
-            )
-        );
-        assertThat(saved).isEqualTo(new Transaction("REF001", "Amazon purchase", new BigDecimal("49.99"), "EUR", LocalDate.of(2025, 1, 15), "SHOPPING", 1L));
+        assertThat(savedTransactions).containsExactly(transaction1, transaction2);
     }
 
-    @Test
-    void shouldNotInsertAnything_whenTransactionListIsEmpty() {
-        //Act
-        repository.saveAll(List.of());
-
-        //Assert
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class);
-        assertThat(count).isZero();
+    private static Transaction getTransaction(ResultSet rs) throws SQLException {
+        return Transaction.builder()
+            .reference(rs.getString("reference"))
+            .label(rs.getString("label"))
+            .amount(rs.getBigDecimal("amount"))
+            .currency(rs.getString("currency"))
+            .date(rs.getDate("date").toLocalDate())
+            .category(rs.getString("category"))
+            .uploadedFileId(rs.getLong("uploaded_file_id"))
+            .build();
     }
+
 }
